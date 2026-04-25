@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Question Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3a;
+    --text-dim: #4a4a6a; --text-mid: #8888aa; --text: #e8e8f0;
+    --accent: #c8f135; --accent-dim: #8aaa20; --danger: #f13535; --warn: #f5a623;
+
+    /* iPhone 15 Pro Max logical resolution: 430 × 932 pts */
+    --device-w: 430px;
+    --device-h: 932px;
+    --half-h: 466px;   /* exact half */
+  }
+
+  html {
+    height: 100%;
+    background: #000;
+    /* Centre the device frame on larger screens */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body {
+    width: var(--device-w);
+    height: var(--device-h);
+    max-width: 100vw;
+    max-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── Setup screen ── */
+  #setup-screen {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; padding: 28px; overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: var(--accent); letter-spacing: 0.05em; }
+  .setup-sub { font-size: 11px; letter-spacing: 0.14em; color: var(--text-dim); text-transform: uppercase; text-align: center; line-height: 1.7; max-width: 300px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 340px; }
+  .field-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+
+  input[type=text], input[type=password] {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px; padding: 10px 14px;
+    border-radius: 6px; width: 100%; outline: none; transition: border-color 0.2s;
+  }
+  input[type=text]:focus, input[type=password]:focus { border-color: var(--accent-dim); }
+  input::placeholder { color: var(--text-dim); }
+
+  .btn-primary {
+    background: var(--accent); color: #0a0a0f; border: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.08em;
+    padding: 11px 32px; border-radius: 6px; cursor: pointer;
+    width: 100%; max-width: 340px; transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .divider { width: 100%; max-width: 340px; border: none; border-top: 1px solid var(--border); }
+  .helper { font-size: 11px; color: var(--text-dim); line-height: 1.7; max-width: 340px; text-align: center; }
+  .helper a { color: var(--accent-dim); text-decoration: none; }
+
+  /* ── Camera screen (two fixed halves) ── */
+  #camera-screen {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── TOP HALF: camera ── */
+  .video-wrap {
+    width: 100%;
+    height: var(--half-h);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+    touch-action: none;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center center;
+  }
+
+  /* Countdown ring — top-left */
+  .countdown-wrap {
+    position: absolute; top: 14px; left: 14px;
+    width: 54px; height: 54px; pointer-events: none; z-index: 2;
+  }
+  .countdown-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .countdown-track { fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 3; }
+  .countdown-ring  { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0 138; transition: stroke-dasharray 1s linear, stroke 0.3s; }
+  .countdown-ring.urgent { stroke: var(--warn); }
+  .countdown-num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--text); line-height: 1;
+  }
+
+  /* Zoom badge — top-right */
+  .zoom-badge {
+    position: absolute; top: 14px; right: 14px; z-index: 2;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--accent); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 4px 10px; border-radius: 4px; letter-spacing: 0.08em;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .zoom-badge.show { opacity: 1; }
+
+  /* Viewfinder */
+  .finder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 1;
+  }
+  .finder-box {
+    width: 78vw; max-width: 310px;
+    height: 170px;
+    border: 2px solid rgba(200,241,53,0.35); border-radius: 8px;
+    position: relative; transition: border-color 0.3s;
+  }
+  .finder-box.scanning { border-color: rgba(200,241,53,0.9); }
+  .finder-box::before, .finder-box::after { content: ''; position: absolute; width: 20px; height: 20px; border-color: var(--accent); border-style: solid; }
+  .finder-box::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .finder-box::after  { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0; top: 0; pointer-events: none; }
+  .scan-line.scanning { opacity: 0.8; animation: scandown 1.2s ease-in-out infinite; }
+  @keyframes scandown { 0%{top:0%;opacity:.8} 90%{top:100%;opacity:.8} 100%{top:100%;opacity:0} }
+
+  /* Pinch hint */
+  .pinch-hint {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.12em; color: rgba(255,255,255,0.3);
+    text-transform: uppercase; white-space: nowrap; pointer-events: none;
+    transition: opacity 1s; z-index: 2;
+  }
+  .pinch-hint.hidden { opacity: 0; }
+
+  canvas { display: none; }
+
+  /* ── BOTTOM HALF: controls ── */
+  .controls {
+    width: 100%;
+    height: var(--half-h);
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 18px 20px;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  /* Status */
+  .status-row { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; transition: background 0.3s; }
+  .status-dot.ready   { background: var(--accent); animation: pulse 2.5s ease-in-out infinite; }
+  .status-dot.busy    { background: var(--warn); }
+  .status-dot.skipped { background: var(--text-dim); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .status-text { font-size: 12px; color: var(--text-mid); flex: 1; line-height: 1.4; }
+
+  /* Last result */
+  .result-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .result-answer { font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: var(--accent); line-height: 1; min-width: 36px; }
+  .result-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .result-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+  .result-question { font-size: 12px; color: var(--text); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sent-badge { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-dim); padding: 3px 8px; border-radius: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; align-self: flex-start; }
+  .sent-badge.show { opacity: 1; }
+
+  /* Section label */
+  .section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); flex-shrink: 0; }
+
+  /* Interval buttons */
+  .btn-row { display: flex; gap: 7px; flex-shrink: 0; }
+  .ivl-btn, .choice-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-mid);
+    font-family: 'DM Mono', monospace; font-size: 13px; padding: 8px 0;
+    border-radius: 6px; cursor: pointer; transition: all 0.15s; flex: 1; text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ivl-btn.active, .choice-btn.active { background: var(--accent); color: #0a0a0f; border-color: var(--accent); }
+
+  /* Action row */
+  .action-row { display: flex; gap: 10px; align-items: center; flex-shrink: 0; margin-top: auto; }
+
+  .pause-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-mid);
+    font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0 16px; height: 52px;
+    border-radius: 8px; cursor: pointer; transition: all 0.15s; flex: 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pause-btn.paused { color: var(--accent); border-color: var(--accent-dim); }
+
+  .shutter {
+    width: 62px; height: 62px; border-radius: 50%;
+    background: var(--accent); border: 4px solid var(--surface);
+    outline: 2px solid var(--accent-dim);
+    cursor: pointer; flex-shrink: 0;
+    transition: transform 0.1s, opacity 0.2s; position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .shutter:active { transform: scale(0.91); }
+  .shutter:disabled { opacity: 0.3; cursor: default; }
+  .shutter.busy::after {
+    content: ''; position: absolute; inset: 5px; border-radius: 50%;
+    border: 3px solid rgba(0,0,0,0.2); border-top-color: rgba(0,0,0,0.75);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: 12px; left: 14px; right: 14px;
+    background: var(--danger); color: #fff; font-size: 12px;
+    padding: 10px 14px; border-radius: 6px; opacity: 0;
+    transition: opacity 0.3s; pointer-events: none; z-index: 30;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ── SETUP ── -->
+<div id="setup-screen">
+  <div class="setup-title">Question Scanner</div>
+  <div class="setup-sub">Timed capture · Pinch to zoom · Hash dedup</div>
+
+  <div class="field-group">
+    <div class="field-label">Anthropic API key</div>
+    <input id="claude-key" type="password" placeholder="sk-ant-..." />
+  </div>
+  <div class="field-group">
+    <div class="field-label">JSONBin Bin ID</div>
+    <input id="bin-id" type="text" placeholder="e.g. 64f2a1b..." />
+  </div>
+  <div class="field-group">
+    <div class="field-label">JSONBin Master Key</div>
+    <input id="bin-key" type="password" placeholder="$2a$10$..." />
+  </div>
+
+  <button class="btn-primary" onclick="startApp()">Start Camera</button>
+  <hr class="divider">
+  <div class="helper">
+    Upload this file to your GitHub Pages repo.<br>
+    App B display screen stays unchanged.
+  </div>
+</div>
+
+<!-- ── CAMERA SCREEN ── -->
+<div id="camera-screen">
+
+  <!-- TOP HALF: video -->
+  <div class="video-wrap" id="video-wrap">
+    <video id="video" autoplay playsinline muted></video>
+
+    <div class="countdown-wrap">
+      <svg class="countdown-svg" viewBox="0 0 46 46">
+        <circle class="countdown-track" cx="23" cy="23" r="20"/>
+        <circle class="countdown-ring" id="countdown-ring" cx="23" cy="23" r="20"/>
+      </svg>
+      <div class="countdown-num" id="countdown-num">90</div>
+    </div>
+
+    <div class="zoom-badge" id="zoom-badge">1.0×</div>
+
+    <div class="finder">
+      <div class="finder-box" id="finder-box">
+        <div class="scan-line" id="scan-line"></div>
+      </div>
+    </div>
+
+    <div class="pinch-hint" id="pinch-hint">Pinch to zoom</div>
+  </div>
+
+  <!-- BOTTOM HALF: controls -->
+  <div class="controls">
+
+    <div class="status-row">
+      <div class="status-dot ready" id="status-dot"></div>
+      <div class="status-text" id="status-text">Ready — first capture in 90s, or tap shutter now</div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-answer" id="result-answer">—</div>
+      <div class="result-info">
+        <div class="result-label">Last question</div>
+        <div class="result-question" id="result-question">Waiting for first capture…</div>
+      </div>
+      <div class="sent-badge" id="sent-badge">Sent</div>
+    </div>
+
+    <div class="section-label">Capture interval</div>
+    <div class="btn-row">
+      <button class="ivl-btn" onclick="setIntervalSecs(30,this)">30s</button>
+      <button class="ivl-btn" onclick="setIntervalSecs(60,this)">60s</button>
+      <button class="ivl-btn active" onclick="setIntervalSecs(90,this)">90s</button>
+      <button class="ivl-btn" onclick="setIntervalSecs(120,this)">2 min</button>
+    </div>
+
+    <div class="section-label">Answer choices</div>
+    <div class="btn-row">
+      <button class="choice-btn active" onclick="setChoices(2,this)">A/B</button>
+      <button class="choice-btn" onclick="setChoices(3,this)">A/B/C</button>
+      <button class="choice-btn" onclick="setChoices(4,this)">A–D</button>
+      <button class="choice-btn" onclick="setChoices(5,this)">A–E</button>
+    </div>
+
+    <div class="action-row">
+      <button class="pause-btn" id="pause-btn" onclick="togglePause()">Pause</button>
+      <button class="shutter" id="shutter" onclick="manualCapture()" title="Capture now"></button>
+    </div>
+
+  </div><!-- /controls -->
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+let claudeKey = '', binId = '', binKey = '';
+let numChoices  = 2;
+let intervalSecs = 90;
+let paused = false;
+let busy   = false;
+let lastHash = null;
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+let countdownTimer = null;
+let secondsLeft    = 90;
+const CIRC = 2 * Math.PI * 20; // r=20
+
+// ── Zoom ──────────────────────────────────────────────────────────────────────
+let zoomLevel = 1.0, minZoom = 1.0, maxZoom = 5.0;
+let pinchStart = null, pinchZoomStart = 1.0;
+let zoomBadgeTimer = null, hintHidden = false;
+let useNativeZoom = false;
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+function startApp() {
+  claudeKey = document.getElementById('claude-key').value.trim();
+  binId     = document.getElementById('bin-id').value.trim();
+  binKey    = document.getElementById('bin-key').value.trim();
+  if (!claudeKey)       { alert('Please enter your Anthropic API key'); return; }
+  if (!binId || !binKey){ alert('Please enter JSONBin Bin ID and Master Key'); return; }
+  localStorage.setItem('claudeKey', claudeKey);
+  localStorage.setItem('binId',     binId);
+  localStorage.setItem('binKey',    binKey);
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('camera-screen').style.display = 'flex';
+
+  const go = stream => {
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.zoom) {
+          minZoom = caps.zoom.min;
+          maxZoom = caps.zoom.max;
+          useNativeZoom = true;
+          window._videoTrack = track;
+        }
+      }
+      startCountdown();
+    };
+  };
+
+  navigator.mediaDevices
+    .getUserMedia({ video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }, audio:false })
+    .then(go)
+    .catch(() => navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false }).then(go)
+    .catch(() => navigator.mediaDevices.getUserMedia({ video:true, audio:false }).then(go)
+    .catch(e  => showToast('Camera error: ' + e.message))));
+
+  setupPinchZoom();
+}
+
+// ── Pinch to zoom ─────────────────────────────────────────────────────────────
+function setupPinchZoom() {
+  const wrap = document.getElementById('video-wrap');
+
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinchStart     = pinchDist(e.touches);
+      pinchZoomStart = zoomLevel;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && pinchStart) {
+      const scale  = pinchDist(e.touches) / pinchStart;
+      const target = Math.min(maxZoom, Math.max(minZoom, pinchZoomStart * scale));
+      applyZoom(target);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) {
+      pinchStart = null;
+      if (!hintHidden) {
+        hintHidden = true;
+        document.getElementById('pinch-hint').classList.add('hidden');
+      }
+    }
+  }, { passive: true });
+}
+
+function pinchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function applyZoom(level) {
+  level = Math.min(maxZoom, Math.max(minZoom, level));
+  zoomLevel = level;
+  if (useNativeZoom && window._videoTrack) {
+    try { window._videoTrack.applyConstraints({ advanced:[{ zoom: level }] }); } catch(e){}
+  } else {
+    document.getElementById('video').style.transform = `scale(${level})`;
+  }
+  const badge = document.getElementById('zoom-badge');
+  badge.textContent = level.toFixed(1) + '×';
+  badge.classList.add('show');
+  clearTimeout(zoomBadgeTimer);
+  zoomBadgeTimer = setTimeout(() => badge.classList.remove('show'), 1800);
+}
+
+// ── Interval ──────────────────────────────────────────────────────────────────
+function setIntervalSecs(secs, btn) {
+  intervalSecs = secs;
+  document.querySelectorAll('.ivl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  stopCountdown();
+  startCountdown();
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('pause-btn');
+  btn.textContent = paused ? 'Resume' : 'Pause';
+  btn.classList.toggle('paused', paused);
+  if (paused) {
+    stopCountdown();
+    setDot('skipped');
+    setStatus('Paused — tap Resume to restart');
+  } else {
+    startCountdown();
+  }
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+function startCountdown() {
+  if (paused) return;
+  secondsLeft = intervalSecs;
+  updateRing();
+  countdownTimer = setInterval(() => {
+    secondsLeft = Math.max(0, secondsLeft - 1);
+    updateRing();
+    if (secondsLeft === 0) { stopCountdown(); runCapture(); }
+  }, 1000);
+}
+
+function stopCountdown() {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+}
+
+function updateRing() {
+  document.getElementById('countdown-num').textContent = secondsLeft;
+  const ring = document.getElementById('countdown-ring');
+  const pct  = intervalSecs > 0 ? secondsLeft / intervalSecs : 0;
+  ring.style.strokeDasharray = `${pct * CIRC} ${CIRC}`;
+  ring.classList.toggle('urgent', secondsLeft <= 10 && secondsLeft > 0);
+}
+
+// ── Capture ───────────────────────────────────────────────────────────────────
+async function runCapture() {
+  if (busy) { startCountdown(); return; }
+  const canvas = snapCanvas();
+  const hash   = computeHash(canvas);
+
+  if (lastHash !== null) {
+    let xor = hash ^ lastHash, dist = 0;
+    while (xor > 0n) { dist += Number(xor & 1n); xor >>= 1n; }
+    if (dist <= 6) {
+      setDot('skipped');
+      setStatus('Same question — skipped (no API call)');
+      document.getElementById('result-question').textContent = 'Same as last capture — no change';
+      startCountdown(); return;
+    }
+  }
+  lastHash = hash;
+  await fireClaudeCall(canvas);
+  startCountdown();
+}
+
+async function manualCapture() {
+  if (busy) return;
+  stopCountdown();
+  lastHash = null;
+  await fireClaudeCall(snapCanvas());
+  startCountdown();
+}
+
+function snapCanvas() {
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas;
+}
+
+// ── Perceptual hash ───────────────────────────────────────────────────────────
+function computeHash(canvas) {
+  const hc = document.createElement('canvas');
+  hc.width = 8; hc.height = 8;
+  hc.getContext('2d').drawImage(canvas, 0, 0, 8, 8);
+  const px = hc.getContext('2d').getImageData(0, 0, 8, 8).data;
+  let mean = 0;
+  for (let i = 0; i < px.length; i += 4) mean += (px[i]+px[i+1]+px[i+2]) / 3;
+  mean /= 64;
+  let hash = 0n;
+  for (let i = 0; i < px.length; i += 4) {
+    const g = (px[i]+px[i+1]+px[i+2]) / 3;
+    hash = (hash << 1n) | (g >= mean ? 1n : 0n);
+  }
+  return hash;
+}
+
+// ── Claude call ───────────────────────────────────────────────────────────────
+async function fireClaudeCall(canvas) {
+  busy = true;
+  const shutter = document.getElementById('shutter');
+  shutter.classList.add('busy'); shutter.disabled = true;
+  document.getElementById('finder-box').classList.add('scanning');
+  document.getElementById('scan-line').classList.add('scanning');
+  setDot('busy'); setStatus('Reading question with Claude…');
+  document.getElementById('result-answer').textContent = '—';
+  document.getElementById('sent-badge').classList.remove('show');
+
+  try {
+    const base64    = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
+    const choices   = ['A','B','C','D','E'].slice(0, numChoices).join(', ');
+    const prompt    = `This image shows a multiple choice question with ${numChoices} answer choices (${choices}).\n\nReturn a JSON object with exactly two fields:\n- "answer": a single integer (1 for A, 2 for B, etc. up to ${numChoices})\n- "question": the full question text verbatim\n\nRaw JSON only — no markdown, no code fences.\nExample: {"answer":2,"question":"What is the capital of France?"}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6', max_tokens: 300,
+        messages: [{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:base64 }},
+          { type:'text', text: prompt }
+        ]}]
+      })
+    });
+
+    if (!res.ok) { const e = await res.json(); throw new Error(e?.error?.message || 'API '+res.status); }
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text?.trim();
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); if (!m) throw new Error('Bad response: '+raw); parsed = JSON.parse(m[0]); }
+
+    const num   = parseInt(parsed.answer);
+    const qText = (parsed.question || '').trim();
+    if (isNaN(num) || num < 1 || num > numChoices) throw new Error('Bad answer value: '+parsed.answer);
+
+    const letter = ['A','B','C','D','E'][num-1];
+    document.getElementById('result-answer').textContent   = num;
+    document.getElementById('result-question').textContent = qText || '(no question text)';
+    setStatus(`Choice ${letter} · Sending to display…`);
+
+    await publishAnswer(num, qText);
+
+    document.getElementById('sent-badge').classList.add('show');
+    setDot('ready');
+    setStatus(`Sent ✓ · Next in ${intervalSecs}s`);
+
+  } catch(e) {
+    showToast(e.message);
+    setDot('skipped'); setStatus('Error — will retry next interval');
+    lastHash = null;
+  }
+
+  document.getElementById('finder-box').classList.remove('scanning');
+  document.getElementById('scan-line').classList.remove('scanning');
+  shutter.classList.remove('busy'); shutter.disabled = false;
+  busy = false;
+}
+
+// ── JSONBin ───────────────────────────────────────────────────────────────────
+async function publishAnswer(num, questionText) {
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'X-Master-Key': binKey },
+    body: JSON.stringify({ answer: num, question: questionText, ts: Date.now() })
+  });
+  if (!r.ok) throw new Error('JSONBin write failed: '+r.status);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setChoices(n, btn) {
+  numChoices = n;
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setDot(state) { document.getElementById('status-dot').className = 'status-dot '+state; }
+function setStatus(txt) { document.getElementById('status-text').textContent = txt; }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ── Restore saved keys ────────────────────────────────────────────────────────
+[['claudeKey','claude-key'],['binId','bin-id'],['binKey','bin-key']].forEach(([k,id]) => {
+  const v = localStorage.getItem(k);
+  if (v) document.getElementById(id).value = v;
+});
+</script>
+</body>
+</html>
