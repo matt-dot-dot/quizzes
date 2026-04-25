@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Answer Display</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3a;
+    --text-dim: #4a4a6a; --text-mid: #8888aa; --text: #e8e8f0;
+    --accent: #c8f135; --accent-dim: #8aaa20; --danger: #f13535;
+  }
+
+  html, body {
+    height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; overflow: hidden;
+  }
+
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+  }
+
+  /* Subtle grid */
+  body::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px; opacity: 0.2; pointer-events: none;
+  }
+
+  /* Corner brackets */
+  .corner { position: absolute; width: 28px; height: 28px; border-color: var(--text-dim); border-style: solid; opacity: 0.35; }
+  .corner.tl { top: 20px; left: 20px; border-width: 1px 0 0 1px; }
+  .corner.tr { top: 20px; right: 20px; border-width: 1px 1px 0 0; }
+  .corner.bl { bottom: 20px; left: 20px; border-width: 0 0 1px 1px; }
+  .corner.br { bottom: 20px; right: 20px; border-width: 0 1px 1px 0; }
+
+  /* ── Config panel (top-left) ── */
+  .config-panel {
+    position: absolute; top: 20px; left: 20px; z-index: 10;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .config-panel input {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 10px;
+    border-radius: 4px; width: 210px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .config-panel input:focus { border-color: var(--accent-dim); }
+  .config-panel input::placeholder { color: var(--text-dim); }
+  .config-panel button {
+    background: var(--surface); border: 1px solid var(--accent-dim); color: var(--accent);
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em;
+    padding: 6px 10px; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .config-panel button:hover { background: #1a2a00; }
+  .config-label { font-size: 10px; letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase; }
+
+  /* ── Poll status widget (top-right) ── */
+  .poll-widget {
+    position: absolute; top: 20px; right: 20px; z-index: 10;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  }
+
+  /* Countdown ring */
+  .ring-wrap {
+    position: relative; width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ring-svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--border); stroke-width: 3; }
+  .ring-fill  {
+    fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
+    stroke-dasharray: 0 170;
+    transition: stroke-dasharray 1s linear, stroke 0.3s;
+  }
+  .ring-fill.stale { stroke: var(--text-dim); }
+  .ring-fill.error { stroke: var(--danger); }
+
+  .ring-inner {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 1; gap: 1px;
+  }
+  .ring-secs {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    color: var(--text); line-height: 1;
+  }
+  .ring-unit {
+    font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  /* Last checked */
+  .last-checked {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  }
+  .lc-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+  .lc-time   { font-size: 12px; color: var(--text-mid); }
+  .lc-ago    { font-size: 10px; color: var(--text-dim); }
+
+  /* Connection dot */
+  .conn-row { display: flex; align-items: center; gap: 6px; }
+  .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; transition: background 0.3s; }
+  .conn-dot.live  { background: var(--accent); animation: pulse 2s ease-in-out infinite; }
+  .conn-dot.error { background: var(--danger); }
+  .conn-label { font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(0.7)} }
+
+  /* ── History (bottom-right) ── */
+  .history {
+    position: absolute; bottom: 28px; right: 24px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 5px; z-index: 1;
+  }
+  .history-label { font-size: 9px; letter-spacing: 0.14em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px; }
+  .history-item  { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text-dim); line-height: 1; }
+
+  /* ── Main display ── */
+  .display-area {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 28px; z-index: 1; width: 100%;
+    padding: 0 max(44px, 10vw);
+  }
+
+  /* Answer ring */
+  .answer-ring { position: relative; width: min(42vw, 42vh, 290px); height: min(42vw, 42vh, 290px); flex-shrink: 0; }
+  .ans-ring-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ans-track    { fill: none; stroke: var(--border); stroke-width: 3; }
+  .ans-progress {
+    fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
+    stroke-dasharray: 0 1000;
+    transition: stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1);
+    transform-origin: center; transform: rotate(-90deg);
+  }
+  .answer-number {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: min(22vw, 22vh, 160px); color: var(--accent); line-height: 1; user-select: none;
+  }
+  .answer-number.waiting { color: var(--text-dim); font-size: min(8vw, 8vh, 52px); letter-spacing: 0.1em; }
+  .answer-number.flash   { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes pop { 0%{transform:scale(0.7);opacity:.3} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+
+  .flash-overlay { position: absolute; inset: 0; background: var(--accent); opacity: 0; pointer-events: none; border-radius: 50%; }
+  .flash-overlay.go { animation: flashout 0.5s ease-out forwards; }
+  @keyframes flashout { 0%{opacity:.18} 100%{opacity:0} }
+
+  /* Question card */
+  .question-card {
+    width: 100%; max-width: 620px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 22px;
+    display: flex; flex-direction: column; gap: 7px;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .question-card.visible { opacity: 1; transform: translateY(0); }
+  .question-card-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
+  .question-text { font-family: 'DM Sans', sans-serif; font-size: clamp(14px, 2vw, 20px); color: var(--text); line-height: 1.55; }
+  .question-text.empty { color: var(--text-dim); font-style: italic; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<!-- Config -->
+<div class="config-panel">
+  <div class="config-label">JSONBin config</div>
+  <input id="bin-id"  placeholder="Bin ID" />
+  <input id="api-key" placeholder="Master key (optional)" />
+  <button onclick="saveConfig()">Connect</button>
+</div>
+
+<!-- Poll status widget -->
+<div class="poll-widget" id="poll-widget" style="display:none">
+
+  <div class="ring-wrap">
+    <svg class="ring-svg" viewBox="0 0 64 64">
+      <circle class="ring-track" cx="32" cy="32" r="27"/>
+      <circle class="ring-fill" id="poll-ring" cx="32" cy="32" r="27"/>
+    </svg>
+    <div class="ring-inner">
+      <span class="ring-secs" id="poll-secs">—</span>
+      <span class="ring-unit">next</span>
+    </div>
+  </div>
+
+  <div class="last-checked">
+    <div class="lc-label">Last check</div>
+    <div class="lc-time" id="lc-time">—</div>
+    <div class="lc-ago"  id="lc-ago">—</div>
+  </div>
+
+  <div class="conn-row">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="conn-label" id="conn-label">Connecting</div>
+  </div>
+
+</div>
+
+<!-- History -->
+<div class="history" id="history-panel" style="display:none">
+  <div class="history-label">Recent</div>
+</div>
+
+<!-- Main display -->
+<div class="display-area">
+  <div class="answer-ring">
+    <svg class="ans-ring-svg" viewBox="0 0 200 200">
+      <circle class="ans-track" cx="100" cy="100" r="90"/>
+      <circle class="ans-progress" id="ans-ring" cx="100" cy="100" r="90"/>
+    </svg>
+    <div class="flash-overlay" id="flash-overlay"></div>
+    <div class="answer-number waiting" id="answer-display">--</div>
+  </div>
+
+  <div class="question-card" id="question-card">
+    <div class="question-card-label">Question</div>
+    <div class="question-text empty" id="question-text">Waiting for first question…</div>
+  </div>
+</div>
+
+<script>
+  const POLL_MS       = 1500;   // poll JSONBin every 1.5s
+  const CIRC_POLL     = 2 * Math.PI * 27;  // r=27 for poll ring
+  const CIRC_ANS      = 2 * Math.PI * 90;  // r=90 for answer ring
+
+  let binId   = localStorage.getItem('binId')   || '';
+  let apiKey  = localStorage.getItem('apiKey')  || '';
+  let pollTimer       = null;
+  let countdownTimer  = null;
+  let lastAnswer      = null;
+  let lastQuestion    = null;
+  let lastCheckTime   = null;   // Date of last successful poll
+  let agoTimer        = null;   // updates "X secs ago"
+  let secsUntilNext   = 0;
+  let history         = [];
+
+  document.getElementById('bin-id').value  = binId;
+  document.getElementById('api-key').value = apiKey;
+
+  function saveConfig() {
+    binId  = document.getElementById('bin-id').value.trim();
+    apiKey = document.getElementById('api-key').value.trim();
+    localStorage.setItem('binId',   binId);
+    localStorage.setItem('apiKey',  apiKey);
+    startPolling();
+  }
+
+  // ── Poll ring countdown ─────────────────────────────────────────────────────
+  function startPollCountdown() {
+    clearInterval(countdownTimer);
+    secsUntilNext = Math.ceil(POLL_MS / 1000);
+    updatePollRing();
+    // Tick every 100ms for smooth ring — only update display each second
+    let elapsed = 0;
+    countdownTimer = setInterval(() => {
+      elapsed += 100;
+      const remaining = Math.max(0, (POLL_MS - elapsed) / 1000);
+      secsUntilNext = remaining;
+      updatePollRing();
+    }, 100);
+  }
+
+  function updatePollRing() {
+    const ring  = document.getElementById('poll-ring');
+    const label = document.getElementById('poll-secs');
+    const pct   = Math.min(1, secsUntilNext / (POLL_MS / 1000));
+    ring.style.strokeDasharray = `${pct * CIRC_POLL} ${CIRC_POLL}`;
+    label.textContent = secsUntilNext < 1 ? '…' : secsUntilNext.toFixed(0) + 's';
+  }
+
+  // ── "Last checked X ago" updater ────────────────────────────────────────────
+  function startAgoUpdater() {
+    clearInterval(agoTimer);
+    agoTimer = setInterval(updateAgo, 1000);
+  }
+
+  function updateAgo() {
+    if (!lastCheckTime) return;
+    const secs = Math.round((Date.now() - lastCheckTime) / 1000);
+    const el   = document.getElementById('lc-ago');
+    if (secs < 5)        el.textContent = 'just now';
+    else if (secs < 60)  el.textContent = secs + 's ago';
+    else                 el.textContent = Math.floor(secs/60) + 'm ' + (secs%60) + 's ago';
+  }
+
+  // ── Poll loop ────────────────────────────────────────────────────────────────
+  function startPolling() {
+    if (!binId) { setConn('', 'Enter bin ID'); return; }
+    document.getElementById('poll-widget').style.display = 'flex';
+    setConn('', 'Connecting…');
+    if (pollTimer) clearInterval(pollTimer);
+    poll();
+    pollTimer = setInterval(() => { poll(); }, POLL_MS);
+    startAgoUpdater();
+  }
+
+  async function poll() {
+    startPollCountdown();
+    const headers = {};
+    if (apiKey) headers['X-Master-Key'] = apiKey;
+
+    try {
+      const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers });
+      if (!r.ok) { setConn('error', 'Error ' + r.status); return; }
+
+      const data     = await r.json();
+      const answer   = data?.record?.answer;
+      const question = data?.record?.question ?? '';
+
+      // Update last-checked display
+      lastCheckTime = Date.now();
+      const t = new Date(lastCheckTime);
+      document.getElementById('lc-time').textContent =
+        t.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      updateAgo();
+      setConn('live', 'Live');
+
+      // New answer or new question text → update display
+      if (answer !== undefined && (answer !== lastAnswer || question !== lastQuestion)) {
+        lastAnswer   = answer;
+        lastQuestion = question;
+        showAnswer(answer, question);
+      }
+
+    } catch(e) {
+      setConn('error', 'Network error');
+    }
+  }
+
+  // ── Show answer ──────────────────────────────────────────────────────────────
+  function showAnswer(num, questionText) {
+    const el      = document.getElementById('answer-display');
+    const overlay = document.getElementById('flash-overlay');
+    const ring    = document.getElementById('ans-ring');
+    const qcard   = document.getElementById('question-card');
+    const qtxt    = document.getElementById('question-text');
+
+    // Number + flash
+    el.className = 'answer-number';
+    el.textContent = num;
+    overlay.className = 'flash-overlay go';
+    setTimeout(() => overlay.className = 'flash-overlay', 600);
+    void el.offsetWidth;
+    el.classList.add('flash');
+
+    // Answer ring fill (1 of 4 = 25% … 4 of 4 = 100%)
+    ring.style.strokeDasharray = `${(num/4) * CIRC_ANS} ${CIRC_ANS}`;
+
+    // Question text
+    if (questionText && questionText.trim()) {
+      qtxt.textContent = questionText.trim();
+      qtxt.className   = 'question-text';
+    } else {
+      qtxt.textContent = 'Question text not available';
+      qtxt.className   = 'question-text empty';
+    }
+    qcard.classList.remove('visible');
+    void qcard.offsetWidth;
+    qcard.classList.add('visible');
+
+    // History
+    history.unshift(num);
+    if (history.length > 4) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const panel = document.getElementById('history-panel');
+    if (history.length < 2) { panel.style.display = 'none'; return; }
+    panel.style.display = 'flex';
+    panel.querySelectorAll('.history-item').forEach(i => i.remove());
+    history.slice(1).forEach(n => {
+      const d = document.createElement('div');
+      d.className   = 'history-item';
+      d.textContent = n;
+      panel.appendChild(d);
+    });
+  }
+
+  function setConn(state, label) {
+    document.getElementById('conn-dot').className   = 'conn-dot ' + state;
+    document.getElementById('conn-label').textContent = label;
+    const ring = document.getElementById('poll-ring');
+    ring.className = 'ring-fill' + (state === 'error' ? ' error' : state === '' ? ' stale' : '');
+  }
+
+  // Auto-connect if saved
+  if (binId) startPolling();
+</script>
+</body>
+</html>
