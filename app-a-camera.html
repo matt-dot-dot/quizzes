@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Question Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3a;
+    --text-dim: #4a4a6a; --text-mid: #8888aa; --text: #e8e8f0;
+    --accent: #c8f135; --accent-dim: #8aaa20; --danger: #f13535; --warn: #f5a623;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+
+  #setup-screen {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; padding: 32px; overflow-y: auto;
+  }
+
+  .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--accent); letter-spacing: 0.05em; }
+  .setup-sub { font-size: 11px; letter-spacing: 0.15em; color: var(--text-dim); text-transform: uppercase; text-align: center; line-height: 1.8; max-width: 320px; }
+  .field-group { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 360px; }
+  .field-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+
+  input[type=text], input[type=password] {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px; padding: 10px 14px;
+    border-radius: 6px; width: 100%; outline: none; transition: border-color 0.2s;
+  }
+  input[type=text]:focus, input[type=password]:focus { border-color: var(--accent-dim); }
+  input::placeholder { color: var(--text-dim); }
+
+  .btn-primary {
+    background: var(--accent); color: #0a0a0f; border: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.08em;
+    padding: 12px 32px; border-radius: 6px; cursor: pointer;
+    width: 100%; max-width: 360px; transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+
+  .divider { width: 100%; max-width: 360px; border: none; border-top: 1px solid var(--border); }
+  .helper { font-size: 11px; color: var(--text-dim); line-height: 1.7; max-width: 360px; text-align: center; }
+  .helper a { color: var(--accent-dim); text-decoration: none; }
+
+  #camera-screen { flex: 1; display: none; flex-direction: column; }
+
+  .video-wrap { flex: 1; position: relative; overflow: hidden; background: #000; min-height: 0; }
+  video { width: 100%; height: 100%; object-fit: cover; }
+
+  .finder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .finder-box { width: min(82vw, 360px); height: min(48vh, 240px); border: 2px solid rgba(200,241,53,0.45); border-radius: 8px; position: relative; }
+  .finder-box::before, .finder-box::after { content: ''; position: absolute; width: 22px; height: 22px; border-color: var(--accent); border-style: solid; }
+  .finder-box::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .finder-box::after  { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0; top: 0; pointer-events: none; }
+  .scan-line.scanning { opacity: 0.7; animation: scandown 1.2s ease-in-out infinite; }
+  @keyframes scandown { 0%{top:0%;opacity:.7} 90%{top:100%;opacity:.7} 100%{top:100%;opacity:0} }
+
+  .state-dot { position: absolute; top: -10px; right: -10px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-dim); border: 2px solid #000; transition: background 0.3s; }
+  .state-dot.motion { background: var(--warn); animation: blink .5s ease-in-out infinite; }
+  .state-dot.stable { background: var(--accent); animation: blink .4s ease-in-out infinite; }
+  .state-dot.sending { background: var(--accent); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .motion-bar-wrap { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: min(78vw, 340px); height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; pointer-events: none; }
+  .motion-bar { height: 100%; width: 0%; border-radius: 2px; background: var(--accent); transition: width 0.18s, background 0.18s; }
+
+  canvas { display: none; }
+
+  .controls { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 18px 20px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+
+  .gate-strip { display: flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; }
+  .gate { padding: 2px 8px; border-radius: 3px; background: var(--surface2); border: 1px solid var(--border); transition: all 0.2s; }
+  .gate.pass { color: var(--accent); border-color: var(--accent-dim); }
+  .gate.fail { color: var(--text-dim); opacity: 0.5; }
+
+  .result-bar { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+  .result-answer { font-family: 'Bebas Neue', sans-serif; font-size: 42px; color: var(--accent); line-height: 1; min-width: 30px; }
+  .result-text { font-size: 12px; color: var(--text-mid); line-height: 1.5; flex: 1; }
+  .sent-badge { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-dim); padding: 3px 8px; border-radius: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; }
+  .sent-badge.show { opacity: 1; }
+
+  .mode-row { display: flex; gap: 8px; align-items: center; }
+  .mode-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+  .mode-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-mid); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 14px; border-radius: 5px; cursor: pointer; transition: all 0.15s; flex: 1; }
+  .mode-btn.active { background: var(--accent); color: #0a0a0f; border-color: var(--accent); }
+
+  .sens-row { display: flex; align-items: center; gap: 10px; }
+  .sens-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); white-space: nowrap; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .sens-val { font-size: 11px; color: var(--text-mid); min-width: 28px; text-align: right; }
+
+  .bottom-row { display: flex; align-items: center; gap: 10px; }
+  .choices-row { display: flex; gap: 6px; flex: 1; }
+  .choice-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-mid); font-family: 'DM Mono', monospace; font-size: 12px; padding: 6px 0; border-radius: 5px; cursor: pointer; transition: all 0.15s; flex: 1; text-align: center; }
+  .choice-btn.active { background: var(--accent); color: #0a0a0f; border-color: var(--accent); }
+
+  .shutter { width: 58px; height: 58px; border-radius: 50%; background: var(--accent); border: 4px solid var(--surface); outline: 2px solid var(--accent-dim); cursor: pointer; flex-shrink: 0; transition: transform 0.1s, opacity 0.2s; position: relative; }
+  .shutter:active { transform: scale(0.91); }
+  .shutter:disabled { opacity: 0.3; cursor: default; }
+  .shutter.busy::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; border: 3px solid rgba(0,0,0,0.2); border-top-color: rgba(0,0,0,0.7); animation: spin 0.8s linear infinite; }
+  .shutter.auto-mode { outline-color: var(--warn); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: absolute; bottom: 220px; left: 16px; right: 16px; background: var(--danger); color: #fff; font-size: 12px; padding: 10px 14px; border-radius: 6px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 10; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="setup-screen">
+  <div class="setup-title">Question Scanner</div>
+  <div class="setup-sub">Auto-detects new questions · Zero wasted API calls</div>
+
+  <div class="field-group">
+    <div class="field-label">Anthropic API key</div>
+    <input id="claude-key" type="password" placeholder="sk-ant-..." />
+  </div>
+  <div class="field-group">
+    <div class="field-label">JSONBin Bin ID</div>
+    <input id="bin-id" type="text" placeholder="e.g. 64f2a1b..." />
+  </div>
+  <div class="field-group">
+    <div class="field-label">JSONBin Master Key</div>
+    <input id="bin-key" type="password" placeholder="$2a$10$..." />
+  </div>
+
+  <button class="btn-primary" onclick="startApp()">Start Camera</button>
+  <hr class="divider">
+  <div class="helper">
+    Need a free JSONBin?<br>
+    1. Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → sign up free<br>
+    2. Create a bin with <code>{"answer":null,"question":""}</code><br>
+    3. Copy the Bin ID &amp; Master Key here<br>
+    4. Open <strong>App B</strong> on your display with the same Bin ID
+  </div>
+</div>
+
+<div id="camera-screen">
+  <div class="video-wrap">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="finder">
+      <div class="finder-box">
+        <div class="scan-line" id="scan-line"></div>
+        <div class="state-dot" id="state-dot"></div>
+      </div>
+    </div>
+    <div class="motion-bar-wrap">
+      <div class="motion-bar" id="motion-bar"></div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+  <canvas id="diff-canvas"></canvas>
+
+  <div class="controls">
+    <div class="gate-strip">
+      <span>Gates:</span>
+      <span class="gate" id="g1">motion</span>
+      <span class="gate" id="g2">stable</span>
+      <span class="gate" id="g3">new</span>
+    </div>
+
+    <div class="result-bar">
+      <div class="result-answer" id="result-answer"></div>
+      <div class="result-text" id="result-text">Point at a question — auto mode will detect it</div>
+      <div class="sent-badge" id="sent-badge">Sent</div>
+    </div>
+
+    <div class="mode-row">
+      <div class="mode-label">Mode:</div>
+      <button class="mode-btn active" id="btn-auto" onclick="setMode('auto')">Auto detect</button>
+      <button class="mode-btn" id="btn-manual" onclick="setMode('manual')">Manual</button>
+    </div>
+
+    <div class="sens-row" id="sens-row">
+      <span class="sens-label">Sensitivity</span>
+      <input type="range" id="sens-slider" min="2" max="20" value="8" oninput="updateSens(this.value)">
+      <span class="sens-val" id="sens-val">8%</span>
+    </div>
+
+    <div class="bottom-row">
+      <div class="choices-row">
+        <button class="choice-btn active" onclick="setChoices(2,this)">A/B</button>
+        <button class="choice-btn" onclick="setChoices(3,this)">A/B/C</button>
+        <button class="choice-btn" onclick="setChoices(4,this)">A–D</button>
+        <button class="choice-btn" onclick="setChoices(5,this)">A–E</button>
+      </div>
+      <button class="shutter auto-mode" id="shutter" onclick="manualCapture()"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+let claudeKey = '', binId = '', binKey = '';
+let numChoices = 2;
+let mode = 'auto';
+let motionThreshold = 8;
+const STABLE_MS = 1200;
+const POLL_MS   = 500;
+const HASH_DIST = 6;
+const SAMPLE_W  = 64;
+const SAMPLE_H  = 36;
+const HASH_W    = 8;
+const HASH_H    = 8;
+
+let busy = false;
+let lastPixels = null;
+let lastHash = null;
+let stableTimer = null;
+let pollInterval = null;
+let motionSeen = false;
+
+function startApp() {
+  claudeKey = document.getElementById('claude-key').value.trim();
+  binId     = document.getElementById('bin-id').value.trim();
+  binKey    = document.getElementById('bin-key').value.trim();
+  if (!claudeKey) { alert('Please enter your Anthropic API key'); return; }
+  if (!binId || !binKey) { alert('Please enter JSONBin Bin ID and Master Key'); return; }
+  localStorage.setItem('claudeKey', claudeKey);
+  localStorage.setItem('binId', binId);
+  localStorage.setItem('binKey', binKey);
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('camera-screen').style.display = 'flex';
+
+  const go = stream => {
+    document.getElementById('video').srcObject = stream;
+    document.getElementById('video').onloadedmetadata = startPolling;
+  };
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+    .then(go)
+    .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(go)
+      .catch(e => showToast('Camera error: ' + e.message)));
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-auto').classList.toggle('active', m === 'auto');
+  document.getElementById('btn-manual').classList.toggle('active', m === 'manual');
+  document.getElementById('sens-row').style.display = m === 'auto' ? 'flex' : 'none';
+  document.getElementById('shutter').classList.toggle('auto-mode', m === 'auto');
+  clearStableTimer();
+  setGates('','','');
+  setResultText(m === 'auto' ? 'Auto mode — point at a question' : 'Manual mode — tap shutter to capture');
+}
+
+function setChoices(n, btn) {
+  numChoices = n;
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateSens(v) {
+  motionThreshold = parseInt(v);
+  document.getElementById('sens-val').textContent = v + '%';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function setResultText(txt) { document.getElementById('result-text').textContent = txt; }
+function setDot(state) { document.getElementById('state-dot').className = 'state-dot ' + state; }
+function setGates(g1, g2, g3) {
+  [['g1',g1],['g2',g2],['g3',g3]].forEach(([id,cls]) => {
+    document.getElementById(id).className = 'gate' + (cls ? ' ' + cls : '');
+  });
+}
+function setMotionBar(pct, hot) {
+  const bar = document.getElementById('motion-bar');
+  bar.style.width = Math.min(100, pct * 4) + '%';
+  bar.style.background = hot ? 'var(--warn)' : 'var(--accent)';
+}
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(tick, POLL_MS);
+}
+
+function tick() {
+  if (mode !== 'auto' || busy) return;
+  const video = document.getElementById('video');
+  if (!video.videoWidth) return;
+
+  const dc = document.getElementById('diff-canvas');
+  dc.width = SAMPLE_W; dc.height = SAMPLE_H;
+  const dctx = dc.getContext('2d');
+  dctx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
+  const pixels = dctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+
+  if (!lastPixels) { lastPixels = pixels.slice(); return; }
+
+  let diffSum = 0;
+  const pixelCount = SAMPLE_W * SAMPLE_H;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const cur  = (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
+    const prev = (lastPixels[i] + lastPixels[i+1] + lastPixels[i+2]) / 3;
+    diffSum += Math.abs(cur - prev);
+  }
+  lastPixels = pixels.slice();
+
+  const diffPct = (diffSum / pixelCount / 255) * 100;
+  setMotionBar(diffPct, diffPct >= motionThreshold);
+
+  if (diffPct < motionThreshold) {
+    if (!motionSeen) setGates('fail','','');
+    return;
+  }
+
+  setGates('pass','','');
+  setDot('motion');
+  motionSeen = true;
+  clearStableTimer();
+  document.getElementById('scan-line').classList.remove('scanning');
+
+  stableTimer = setTimeout(() => {
+    stableTimer = null;
+    setGates('pass','pass','');
+    setDot('stable');
+    document.getElementById('scan-line').classList.add('scanning');
+    setTimeout(checkAndFire, 250);
+  }, STABLE_MS);
+}
+
+function clearStableTimer() {
+  if (stableTimer) { clearTimeout(stableTimer); stableTimer = null; }
+  motionSeen = false;
+  document.getElementById('scan-line').classList.remove('scanning');
+}
+
+async function checkAndFire() {
+  if (busy) return;
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const hash = computeHash(canvas);
+  if (lastHash !== null) {
+    let xor = hash ^ lastHash;
+    let dist = 0;
+    while (xor > 0n) { dist += Number(xor & 1n); xor >>= 1n; }
+    if (dist <= HASH_DIST) {
+      setGates('pass','pass','fail');
+      setDot('');
+      setResultText('Same question — skipped (no API call)');
+      document.getElementById('scan-line').classList.remove('scanning');
+      motionSeen = false;
+      return;
+    }
+  }
+  setGates('pass','pass','pass');
+  lastHash = hash;
+  await fireClaudeCall(canvas);
+}
+
+function computeHash(canvas) {
+  const hc = document.createElement('canvas');
+  hc.width = HASH_W; hc.height = HASH_H;
+  hc.getContext('2d').drawImage(canvas, 0, 0, HASH_W, HASH_H);
+  const px = hc.getContext('2d').getImageData(0, 0, HASH_W, HASH_H).data;
+  let mean = 0;
+  const n = HASH_W * HASH_H;
+  for (let i = 0; i < px.length; i += 4) mean += (px[i] + px[i+1] + px[i+2]) / 3;
+  mean /= n;
+  let hash = 0n;
+  for (let i = 0; i < px.length; i += 4) {
+    const gray = (px[i] + px[i+1] + px[i+2]) / 3;
+    hash = (hash << 1n) | (gray >= mean ? 1n : 0n);
+  }
+  return hash;
+}
+
+async function manualCapture() {
+  if (busy) return;
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  if (mode === 'auto') lastHash = null;
+  await fireClaudeCall(canvas);
+}
+
+async function fireClaudeCall(canvas) {
+  if (busy) return;
+  busy = true;
+
+  const shutter = document.getElementById('shutter');
+  shutter.classList.add('busy'); shutter.disabled = true;
+  setDot('sending');
+  document.getElementById('scan-line').classList.remove('scanning');
+  document.getElementById('result-answer').textContent = '';
+  document.getElementById('sent-badge').classList.remove('show');
+  setResultText('Reading question...');
+
+  try {
+    const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    const choiceList = ['A','B','C','D','E'].slice(0, numChoices).join(', ');
+
+    // Ask Claude for both the answer number AND the question text in one call
+    const prompt = `This image shows a multiple choice question with ${numChoices} answer choices (${choiceList}).
+
+Return a JSON object with exactly two fields:
+- "answer": a single integer (1 for choice A, 2 for B, etc. up to ${numChoices})
+- "question": the full question text as written in the image, verbatim
+
+Respond with raw JSON only — no markdown, no code fences, no explanation.
+Example: {"answer":2,"question":"What is the capital of France?"}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+
+    if (!res.ok) { const e = await res.json(); throw new Error(e?.error?.message || 'API ' + res.status); }
+
+    const data = await res.json();
+    const raw = data.content?.[0]?.text?.trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // fallback: try extracting JSON from within the response
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('Could not parse response: ' + raw);
+      parsed = JSON.parse(match[0]);
+    }
+
+    const num = parseInt(parsed.answer);
+    const questionText = (parsed.question || '').trim();
+
+    if (isNaN(num) || num < 1 || num > numChoices) throw new Error('Bad answer value: ' + parsed.answer);
+
+    const letter = ['A','B','C','D','E'][num - 1];
+    document.getElementById('result-answer').textContent = num;
+    setResultText(`Choice ${letter} · Sending to display...`);
+
+    await publishAnswer(num, questionText);
+
+    setResultText(`Choice ${letter} · ${questionText.slice(0, 60)}${questionText.length > 60 ? '…' : ''}`);
+    document.getElementById('sent-badge').classList.add('show');
+    setDot('');
+    setGates('','','');
+
+  } catch(e) {
+    showToast(e.message);
+    setResultText('Error — will retry on next change');
+    lastHash = null;
+    setDot('');
+    setGates('','','');
+  }
+
+  shutter.classList.remove('busy'); shutter.disabled = false;
+  busy = false;
+  motionSeen = false;
+}
+
+async function publishAnswer(num, questionText) {
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': binKey },
+    body: JSON.stringify({ answer: num, question: questionText, ts: Date.now() })
+  });
+  if (!r.ok) throw new Error('JSONBin write failed: ' + r.status);
+}
+
+[['claudeKey','claude-key'],['binId','bin-id'],['binKey','bin-key']].forEach(([k,id]) => {
+  const v = localStorage.getItem(k);
+  if (v) document.getElementById(id).value = v;
+});
+</script>
+</body>
+</html>
