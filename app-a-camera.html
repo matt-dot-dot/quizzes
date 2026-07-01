@@ -15,7 +15,6 @@
     --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3a;
     --text-dim: #4a4a6a; --text-mid: #8888aa; --text: #e8e8f0;
     --accent: #c8f135; --accent-dim: #8aaa20; --danger: #f13535; --warn: #f5a623;
-    /* iPhone 15 Pro Max: 430 × 932 pts */
     --device-w: 430px; --device-h: 932px; --half-h: 466px;
   }
 
@@ -37,12 +36,11 @@
     position: absolute; inset: 0; z-index: 20;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 14px; padding: 28px; overflow-y: auto;
-    background: var(--bg);
+    gap: 16px; padding: 32px; background: var(--bg);
   }
 
   .setup-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: var(--accent); letter-spacing: 0.05em; }
-  .setup-sub   { font-size: 11px; letter-spacing: 0.14em; color: var(--text-dim); text-transform: uppercase; text-align: center; line-height: 1.7; max-width: 300px; }
+  .setup-sub   { font-size: 11px; letter-spacing: 0.14em; color: var(--text-dim); text-transform: uppercase; text-align: center; line-height: 1.8; max-width: 300px; }
   .field-group { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 340px; }
   .field-label { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
 
@@ -67,37 +65,26 @@
   /* ── Camera screen ── */
   #camera-screen { display: none; flex-direction: column; width: 100%; height: 100%; }
 
-  /* TOP HALF */
   .video-wrap {
     width: 100%; height: var(--half-h); flex-shrink: 0;
     position: relative; overflow: hidden; background: #000; touch-action: none;
   }
 
-  video {
-    width: 100%; height: 100%; object-fit: cover;
-    transform-origin: center center;
-    will-change: transform; /* GPU compositing hint */
-  }
+  video { width: 100%; height: 100%; object-fit: cover; transform-origin: center center; will-change: transform; }
 
-  /* Countdown ring */
   .countdown-wrap {
     position: absolute; top: 14px; left: 14px;
     width: 58px; height: 58px; pointer-events: none; z-index: 2;
   }
   .cd-svg   { width: 100%; height: 100%; transform: rotate(-90deg); }
   .cd-track { fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 3.5; }
-  .cd-ring  {
-    fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round;
-    stroke-dasharray: 0 151;
-    transition: stroke-dasharray 1s linear, stroke 0.3s;
-  }
+  .cd-ring  { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 0 151; transition: stroke-dasharray 1s linear, stroke 0.3s; }
   .cd-ring.urgent { stroke: var(--warn); }
   .cd-num {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-family: 'Bebas Neue', sans-serif; font-size: 19px; color: var(--text); line-height: 1;
   }
 
-  /* Zoom badge */
   .zoom-badge {
     position: absolute; top: 14px; right: 14px; z-index: 2;
     background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.15);
@@ -107,7 +94,6 @@
   }
   .zoom-badge.show { opacity: 1; }
 
-  /* Viewfinder */
   .finder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1; }
   .finder-box {
     width: 78vw; max-width: 310px; height: 170px;
@@ -115,26 +101,24 @@
     position: relative; transition: border-color 0.3s;
   }
   .finder-box.scanning { border-color: rgba(200,241,53,0.9); }
-  .finder-box::before,
-  .finder-box::after   { content: ''; position: absolute; width: 20px; height: 20px; border-color: var(--accent); border-style: solid; }
-  .finder-box::before  { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-  .finder-box::after   { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+  .finder-box::before, .finder-box::after { content: ''; position: absolute; width: 20px; height: 20px; border-color: var(--accent); border-style: solid; }
+  .finder-box::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .finder-box::after  { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
 
   .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0; top: 0; }
-  .scan-line.scanning  { opacity: 0.8; animation: scandown 1.2s ease-in-out infinite; }
-  @keyframes scandown  { 0%{top:0%;opacity:.8} 90%{top:100%;opacity:.8} 100%{top:100%;opacity:0} }
+  .scan-line.scanning { opacity: 0.8; animation: scandown 1.2s ease-in-out infinite; }
+  @keyframes scandown { 0%{top:0%;opacity:.8} 90%{top:100%;opacity:.8} 100%{top:100%;opacity:0} }
 
   .pinch-hint {
     position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
     font-size: 10px; letter-spacing: 0.12em; color: rgba(255,255,255,0.3);
-    text-transform: uppercase; white-space: nowrap; pointer-events: none;
-    transition: opacity 1s; z-index: 2;
+    text-transform: uppercase; white-space: nowrap; pointer-events: none; transition: opacity 1s; z-index: 2;
   }
   .pinch-hint.hidden { opacity: 0; }
 
   canvas { display: none; }
 
-  /* BOTTOM HALF */
+  /* ── Controls (bottom half) ── */
   .controls {
     width: 100%; height: var(--half-h); flex-shrink: 0;
     background: var(--surface); border-top: 1px solid var(--border);
@@ -147,7 +131,7 @@
   .status-dot.ready { background: var(--accent); animation: pulse 2.5s ease-in-out infinite; }
   .status-dot.busy  { background: var(--warn); }
   .status-dot.error { background: var(--danger); }
-  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.35} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
   .status-text { font-size: 12px; color: var(--text-mid); flex: 1; line-height: 1.4; }
 
   .result-card {
@@ -159,12 +143,7 @@
   .result-info     { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .result-label    { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
   .result-question { font-size: 12px; color: var(--text); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sent-badge {
-    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--accent); border: 1px solid var(--accent-dim);
-    padding: 3px 8px; border-radius: 3px; flex-shrink: 0;
-    opacity: 0; transition: opacity 0.3s; align-self: flex-start;
-  }
+  .sent-badge { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-dim); padding: 3px 8px; border-radius: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.3s; align-self: flex-start; }
   .sent-badge.show { opacity: 1; }
 
   .section-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); flex-shrink: 0; }
@@ -220,22 +199,14 @@
 <!-- ── SETUP ── -->
 <div id="setup-screen">
   <div class="setup-title">Question Scanner</div>
-  <div class="setup-sub">Timed capture · Claude checks every shot</div>
+  <div class="setup-sub">Firebase sync · Claude answers every shot</div>
 
   <div class="field-group">
     <div class="field-label">Anthropic API key</div>
     <input id="claude-key" type="password" placeholder="sk-ant-..." />
   </div>
-  <div class="field-group">
-    <div class="field-label">JSONBin Bin ID</div>
-    <input id="bin-id" type="text" placeholder="e.g. 64f2a1b..." />
-  </div>
-  <div class="field-group">
-    <div class="field-label">JSONBin Master Key</div>
-    <input id="bin-key" type="password" placeholder="$2a$10$..." />
-  </div>
 
-  <button class="btn-primary" id="start-btn" onclick="startApp()">Start Camera</button>
+  <button class="btn-primary" onclick="startApp()">Start Camera</button>
   <hr class="divider">
   <div class="helper">
     If camera doesn't start, open Safari Settings<br>and re-enable camera for this site.
@@ -244,7 +215,6 @@
 
 <!-- ── CAMERA SCREEN ── -->
 <div id="camera-screen">
-
   <div class="video-wrap" id="video-wrap">
     <video id="video" autoplay playsinline muted></video>
 
@@ -270,7 +240,7 @@
   <div class="controls">
     <div class="status-row">
       <div class="status-dot ready" id="status-dot"></div>
-      <div class="status-text" id="status-text">Ready — tap shutter now or wait for timer</div>
+      <div class="status-text" id="status-text">Ready — tap shutter or wait for timer</div>
     </div>
 
     <div class="result-card">
@@ -310,32 +280,31 @@
 <canvas id="canvas"></canvas>
 
 <script>
-// ── Credentials & settings ────────────────────────────────────────────────────
+// ── Firebase config ───────────────────────────────────────────────────────────
+const FIREBASE_URL = 'https://test-uh-306c6-default-rtdb.firebaseio.com/quiz.json';
+
+// ── State ─────────────────────────────────────────────────────────────────────
 let claudeKey    = '';
-let binId        = '';
-let binKey       = '';
 let numChoices   = 2;
 let intervalSecs = 90;
 let paused       = false;
 let busy         = false;
 
-// ── Countdown state ───────────────────────────────────────────────────────────
 let countdownTimer = null;
 let secondsLeft    = 90;
-const CIRC = 2 * Math.PI * 24; // matches r="24" in SVG
+const CIRC = 2 * Math.PI * 24;
 
-// ── Camera / zoom state ───────────────────────────────────────────────────────
-let videoTrack    = null;   // MediaStreamTrack — kept scoped, not on window
-let useNativeZoom = false;
-let zoomLevel     = 1.0;
-let minZoom       = 1.0;
-let maxZoom       = 5.0;
-let pinchStart    = null;
+let videoTrack     = null;
+let useNativeZoom  = false;
+let zoomLevel      = 1.0;
+let minZoom        = 1.0;
+let maxZoom        = 5.0;
+let pinchStart     = null;
 let pinchZoomStart = 1.0;
 let zoomBadgeTimer = null;
-let hintHidden    = false;
+let hintHidden     = false;
 
-// ── Cached DOM refs (set once camera screen is shown) ────────────────────────
+// ── Cached DOM refs ───────────────────────────────────────────────────────────
 let elVideo, elCanvas, elCdRing, elCdNum, elFinderBox, elScanLine;
 let elStatusDot, elStatusText, elResultAnswer, elResultQuestion;
 let elSentBadge, elShutter, elZoomBadge, elToast;
@@ -360,29 +329,19 @@ function cacheDOMRefs() {
 // ── Setup ─────────────────────────────────────────────────────────────────────
 async function startApp() {
   claudeKey = document.getElementById('claude-key').value.trim();
-  binId     = document.getElementById('bin-id').value.trim();
-  binKey    = document.getElementById('bin-key').value.trim();
-
-  if (!claudeKey)        { alert('Please enter your Anthropic API key'); return; }
-  if (!binId || !binKey) { alert('Please enter your JSONBin Bin ID and Master Key'); return; }
-
+  if (!claudeKey) { alert('Please enter your Anthropic API key'); return; }
   localStorage.setItem('claudeKey', claudeKey);
-  localStorage.setItem('binId',     binId);
-  localStorage.setItem('binKey',    binKey);
 
-  // Show camera screen before requesting camera permission
   document.getElementById('setup-screen').style.display  = 'none';
   document.getElementById('camera-screen').style.display = 'flex';
   cacheDOMRefs();
   setupPinchZoom();
 
-  // Guard: camera API must exist (requires HTTPS)
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showCameraError('Camera API unavailable. Make sure the page is loaded over HTTPS in Safari.');
     return;
   }
 
-  // Try three progressively simpler constraints until one works
   const attempts = [
     { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
     { video: { facingMode: 'environment' }, audio: false },
@@ -392,33 +351,21 @@ async function startApp() {
   let stream = null;
   let lastErr = null;
   for (const constraints of attempts) {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-      break;
-    } catch (e) {
-      lastErr = e;
-    }
+    try { stream = await navigator.mediaDevices.getUserMedia(constraints); break; }
+    catch (e) { lastErr = e; }
   }
 
   if (!stream) {
-    showCameraError('Camera access denied or unavailable.\n\n' +
-      'On iOS: Settings → Safari → Camera → Allow\n' +
-      'Error: ' + (lastErr ? lastErr.message : 'unknown'));
+    showCameraError('Camera access denied.\n\niOS: Settings → Safari → Camera → Allow\nError: ' + (lastErr?.message || 'unknown'));
     return;
   }
 
   elVideo.srcObject = stream;
   elVideo.onloadedmetadata = () => {
-    // Try native zoom on supported devices
     const track = stream.getVideoTracks()[0];
     if (track) {
       const caps = track.getCapabilities ? track.getCapabilities() : {};
-      if (caps.zoom) {
-        minZoom = caps.zoom.min;
-        maxZoom = caps.zoom.max;
-        useNativeZoom = true;
-        videoTrack = track;
-      }
+      if (caps.zoom) { minZoom = caps.zoom.min; maxZoom = caps.zoom.max; useNativeZoom = true; videoTrack = track; }
     }
     startCountdown();
   };
@@ -433,36 +380,18 @@ function showCameraError(msg) {
 // ── Pinch-to-zoom ─────────────────────────────────────────────────────────────
 function setupPinchZoom() {
   const wrap = document.getElementById('video-wrap');
-
   wrap.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) {
-      pinchStart     = pinchDist(e.touches);
-      pinchZoomStart = zoomLevel;
-      e.preventDefault();
-    }
+    if (e.touches.length === 2) { pinchStart = pinchDist(e.touches); pinchZoomStart = zoomLevel; e.preventDefault(); }
   }, { passive: false });
-
   wrap.addEventListener('touchmove', e => {
-    if (e.touches.length === 2 && pinchStart) {
-      applyZoom(pinchZoomStart * (pinchDist(e.touches) / pinchStart));
-      e.preventDefault();
-    }
+    if (e.touches.length === 2 && pinchStart) { applyZoom(pinchZoomStart * (pinchDist(e.touches) / pinchStart)); e.preventDefault(); }
   }, { passive: false });
-
   wrap.addEventListener('touchend', e => {
-    if (e.touches.length < 2) {
-      pinchStart = null;
-      if (!hintHidden) {
-        hintHidden = true;
-        document.getElementById('pinch-hint').classList.add('hidden');
-      }
-    }
+    if (e.touches.length < 2) { pinchStart = null; if (!hintHidden) { hintHidden = true; document.getElementById('pinch-hint').classList.add('hidden'); } }
   }, { passive: true });
 }
 
-function pinchDist(t) {
-  return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-}
+function pinchDist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
 
 function applyZoom(level) {
   level = Math.min(maxZoom, Math.max(minZoom, level));
@@ -478,13 +407,12 @@ function applyZoom(level) {
   zoomBadgeTimer = setTimeout(() => elZoomBadge.classList.remove('show'), 1800);
 }
 
-// ── Interval selector ─────────────────────────────────────────────────────────
+// ── Interval / pause ──────────────────────────────────────────────────────────
 function setIntervalSecs(secs, btn) {
   intervalSecs = secs;
   document.querySelectorAll('.ivl-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  stopCountdown();
-  startCountdown();
+  stopCountdown(); startCountdown();
 }
 
 function togglePause() {
@@ -493,36 +421,25 @@ function togglePause() {
   btn.textContent = paused ? 'Resume' : 'Pause';
   btn.classList.toggle('paused', paused);
   if (paused) {
-    stopCountdown();
-    setDot('');
-    setStatus('Paused — tap Resume to restart');
-    elCdNum.textContent = '—';
-    elCdRing.style.strokeDasharray = `0 ${CIRC}`;
-  } else {
-    startCountdown();
-  }
+    stopCountdown(); setDot(''); setStatus('Paused — tap Resume to restart');
+    elCdNum.textContent = '—'; elCdRing.style.strokeDasharray = `0 ${CIRC}`;
+  } else { startCountdown(); }
 }
 
 // ── Countdown ─────────────────────────────────────────────────────────────────
 function startCountdown() {
   if (paused) return;
   secondsLeft = intervalSecs;
-  updateRing();
-  setDot('ready');
-  setStatus('Next capture in ' + secondsLeft + 's');
-
+  updateRing(); setDot('ready'); setStatus('Next capture in ' + secondsLeft + 's');
   countdownTimer = setInterval(() => {
     secondsLeft = Math.max(0, secondsLeft - 1);
     updateRing();
-    if (secondsLeft > 0) { setStatus('Next capture in ' + secondsLeft + 's'); }
+    if (secondsLeft > 0) setStatus('Next capture in ' + secondsLeft + 's');
     if (secondsLeft === 0) { stopCountdown(); runCapture(); }
   }, 1000);
 }
 
-function stopCountdown() {
-  clearInterval(countdownTimer);
-  countdownTimer = null;
-}
+function stopCountdown() { clearInterval(countdownTimer); countdownTimer = null; }
 
 function updateRing() {
   const pct = intervalSecs > 0 ? secondsLeft / intervalSecs : 0;
@@ -550,7 +467,7 @@ async function manualCapture() {
 }
 
 function snapCanvas() {
-  if (!elVideo.videoWidth || !elVideo.videoHeight) return null; // guard: video not ready
+  if (!elVideo.videoWidth || !elVideo.videoHeight) return null;
   elCanvas.width  = elVideo.videoWidth;
   elCanvas.height = elVideo.videoHeight;
   elCanvas.getContext('2d').drawImage(elVideo, 0, 0);
@@ -560,13 +477,10 @@ function snapCanvas() {
 // ── Claude API ────────────────────────────────────────────────────────────────
 async function fireClaudeCall(canvas) {
   busy = true;
-  elShutter.classList.add('busy');
-  elShutter.disabled = true;
-  elFinderBox.classList.add('scanning');
-  elScanLine.classList.add('scanning');
+  elShutter.classList.add('busy'); elShutter.disabled = true;
+  elFinderBox.classList.add('scanning'); elScanLine.classList.add('scanning');
   elSentBadge.classList.remove('show');
-  setDot('busy');
-  setStatus('Reading question…');
+  setDot('busy'); setStatus('Reading question…');
 
   try {
     const base64  = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
@@ -589,8 +503,7 @@ Example: {"answer":2,"question":"What is the capital of France?"}`;
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 300,
+        model: 'claude-opus-4-6', max_tokens: 300,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
           { type: 'text', text: prompt }
@@ -606,21 +519,13 @@ Example: {"answer":2,"question":"What is the capital of France?"}`;
     const data = await res.json();
     const raw  = data.content?.[0]?.text?.trim();
 
-    // Parse JSON — with fallback to extract from fenced response
     let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('Unparseable response: ' + raw.slice(0, 80));
-      parsed = JSON.parse(match[0]);
-    }
+    try { parsed = JSON.parse(raw); }
+    catch { const m = raw.match(/\{[\s\S]*\}/); if (!m) throw new Error('Unparseable: ' + raw.slice(0,80)); parsed = JSON.parse(m[0]); }
 
     const num   = parseInt(parsed.answer);
     const qText = (parsed.question || '').trim();
-    if (isNaN(num) || num < 1 || num > numChoices) {
-      throw new Error(`Answer "${parsed.answer}" is out of range (expected 1–${numChoices})`);
-    }
+    if (isNaN(num) || num < 1 || num > numChoices) throw new Error(`Answer "${parsed.answer}" out of range`);
 
     const letter = ['A','B','C','D','E'][num - 1];
     elResultAnswer.textContent   = num;
@@ -635,54 +540,40 @@ Example: {"answer":2,"question":"What is the capital of France?"}`;
 
   } catch (err) {
     showToast(err.message);
-    setDot('error');
-    setStatus('Error — see toast · Retrying next interval');
+    setDot('error'); setStatus('Error — see toast · Retrying next interval');
   }
 
-  elFinderBox.classList.remove('scanning');
-  elScanLine.classList.remove('scanning');
-  elShutter.classList.remove('busy');
-  elShutter.disabled = false;
+  elFinderBox.classList.remove('scanning'); elScanLine.classList.remove('scanning');
+  elShutter.classList.remove('busy'); elShutter.disabled = false;
   busy = false;
 }
 
-// ── JSONBin write ─────────────────────────────────────────────────────────────
+// ── Firebase write ────────────────────────────────────────────────────────────
 async function publishAnswer(num, questionText) {
-  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+  const r = await fetch(FIREBASE_URL, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': binKey },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ answer: num, question: questionText, ts: Date.now() })
   });
-  if (!r.ok) throw new Error(`JSONBin write failed (${r.status}) — check Bin ID and Master Key`);
+  if (!r.ok) throw new Error(`Firebase write failed (${r.status})`);
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function setChoices(n, btn) {
   numChoices = n;
   document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
-
-function setDot(state) {
-  elStatusDot.className = 'status-dot' + (state ? ' ' + state : '');
-}
-
-function setStatus(txt) {
-  elStatusText.textContent = txt;
-}
-
+function setDot(state)  { elStatusDot.className = 'status-dot' + (state ? ' ' + state : ''); }
+function setStatus(txt) { elStatusText.textContent = txt; }
 function showToast(msg) {
-  elToast.textContent = msg;
-  elToast.classList.add('show');
+  elToast.textContent = msg; elToast.classList.add('show');
   setTimeout(() => elToast.classList.remove('show'), 5000);
 }
 
-// ── Restore saved credentials ─────────────────────────────────────────────────
-[['claudeKey','claude-key'],['binId','bin-id'],['binKey','bin-key']].forEach(([key, id]) => {
-  const val = localStorage.getItem(key);
-  if (val) document.getElementById(id).value = val;
-});
-
+// ── Restore saved key ─────────────────────────────────────────────────────────
+const saved = localStorage.getItem('claudeKey');
+if (saved) document.getElementById('claude-key').value = saved;
 </script>
 </body>
 </html>
