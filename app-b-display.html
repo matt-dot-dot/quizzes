@@ -7,389 +7,299 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Answer Display</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
- 
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
- 
+
   :root {
-    --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3a;
+    --bg: #0a0a0f; --surface: #13131a; --border: #2a2a3a;
     --text-dim: #4a4a6a; --text-mid: #8888aa; --text: #e8e8f0;
     --accent: #c8f135; --accent-dim: #8aaa20; --danger: #f13535;
   }
- 
+
   html, body {
     height: 100%; background: var(--bg); color: var(--text);
-    font-family: 'DM Mono', monospace; overflow: hidden;
+    font-family: 'DM Sans', sans-serif; overflow: hidden;
   }
- 
+
   body {
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center; position: relative;
+    position: relative;
   }
- 
+
+  /* Subtle grid */
   body::before {
     content: ''; position: absolute; inset: 0;
     background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 60px 60px; opacity: 0.2; pointer-events: none;
+    background-size: 60px 60px; opacity: 0.15; pointer-events: none;
   }
- 
-  .corner { position: absolute; width: 28px; height: 28px; border-color: var(--text-dim); border-style: solid; opacity: 0.35; }
-  .corner.tl { top: 20px; left: 20px; border-width: 1px 0 0 1px; }
-  .corner.tr { top: 20px; right: 20px; border-width: 1px 1px 0 0; }
-  .corner.bl { bottom: 20px; left: 20px; border-width: 0 0 1px 1px; }
-  .corner.br { bottom: 20px; right: 20px; border-width: 0 1px 1px 0; }
- 
-  /* ── Connection widget ── */
+
+  /* ── Connection status (top right) ── */
   .conn-widget {
-    position: absolute; top: 20px; right: 20px; z-index: 10;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    position: absolute; top: 24px; right: 28px; z-index: 10;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
   }
   .conn-row  { display: flex; align-items: center; gap: 7px; }
-  .conn-dot  { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; transition: background 0.3s; }
+  .conn-dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; transition: background 0.3s; }
   .conn-dot.live       { background: var(--accent); animation: pulse 2s ease-in-out infinite; }
   .conn-dot.error      { background: var(--danger); }
   .conn-dot.connecting { background: var(--text-mid); animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .conn-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
-  .lu-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); text-align: right; }
-  .lu-time  { font-size: 12px; color: var(--text-mid); text-align: right; }
-  .lu-ago   { font-size: 10px; color: var(--text-dim); text-align: right; }
- 
-  /* ── History ── */
-  .history {
-    position: absolute; bottom: 28px; right: 24px;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 5px; z-index: 1;
+  .conn-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+  .lu-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-align: right; }
+  .lu-ago  { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); opacity: 0.6; text-align: right; }
+
+  /* ── Layout: question top, answer bottom ── */
+  .question-section {
+    flex: 0 0 auto;
+    padding: 52px 48px 28px;
+    border-bottom: 1px solid var(--border);
+    position: relative; z-index: 1;
   }
-  .history-label { font-size: 9px; letter-spacing: 0.14em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px; }
-  .history-item  { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text-dim); line-height: 1; }
- 
-  /* ── Main display area ── */
-  .display-area {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 24px; z-index: 1; width: 100%;
-    padding: 0 max(40px, 8vw);
-  }
- 
-  /* Type badge — shown for all types */
-  .type-badge {
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
     font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--text-dim); border: 1px solid var(--border);
-    padding: 4px 12px; border-radius: 20px; background: var(--surface);
+    color: var(--text-dim); margin-bottom: 12px;
+  }
+
+  .question-text {
+    font-size: clamp(16px, 2.2vw, 26px);
+    color: var(--text); line-height: 1.55; font-weight: 400;
+  }
+  .question-text.waiting { color: var(--text-dim); font-style: italic; }
+
+  .answer-section {
+    flex: 1;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 32px 48px 48px;
+    position: relative; z-index: 1;
+  }
+
+  .answer-type-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 20px;
     opacity: 0; transition: opacity 0.3s;
   }
-  .type-badge.visible { opacity: 1; }
- 
-  /* ── MODE 1: Ring (single_mc, multi_select) ── */
-  #ring-mode { display: flex; flex-direction: column; align-items: center; gap: 0; }
- 
-  .answer-ring { position: relative; width: min(40vw, 40vh, 270px); height: min(40vw, 40vh, 270px); flex-shrink: 0; }
-  .ans-ring-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .ans-track    { fill: none; stroke: var(--border); stroke-width: 3; }
-  .ans-progress {
-    fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round;
-    stroke-dasharray: 0 1000; transition: stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1);
-    transform-origin: center; transform: rotate(-90deg);
-  }
-  .answer-number {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  .answer-type-label.visible { opacity: 1; }
+
+  /* ── Big answer (single_mc, multi_select) ── */
+  .big-answer {
+    display: none;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: min(20vw, 20vh, 140px); color: var(--accent); line-height: 1; user-select: none;
-    letter-spacing: 0.02em;
+    font-size: clamp(80px, 22vw, 220px);
+    color: var(--accent);
+    line-height: 0.9;
+    letter-spacing: 0.04em;
+    animation: answerIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .answer-number.waiting { color: var(--text-dim); font-size: min(7vw, 7vh, 48px); letter-spacing: 0.1em; }
-  .answer-number.multi   { font-size: min(11vw, 11vh, 72px); }
-  .answer-number.flash   { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
-  @keyframes pop { 0%{transform:scale(0.7);opacity:.3} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
- 
-  .flash-overlay { position: absolute; inset: 0; background: var(--accent); opacity: 0; pointer-events: none; border-radius: 50%; }
-  .flash-overlay.go { animation: flashout 0.5s ease-out forwards; }
-  @keyframes flashout { 0%{opacity:.18} 100%{opacity:0} }
- 
-  /* ── MODE 2: List (ordering, matching) ── */
-  #list-mode { display: none; flex-direction: column; align-items: stretch; gap: 0; width: 100%; max-width: 620px; }
- 
-  .answer-list-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; overflow: hidden;
-    animation: cardIn 0.4s ease forwards;
+  @keyframes answerIn {
+    from { opacity: 0; transform: scale(0.75); }
+    to   { opacity: 1; transform: scale(1); }
   }
-  @keyframes cardIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
- 
-  /* Ordering rows */
-  .order-row {
-    display: flex; align-items: center; gap: 14px;
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
+
+  /* ── List answer (ordering, matching) ── */
+  .list-answer {
+    display: none;
+    flex-direction: column;
+    gap: 0;
   }
-  .order-row:last-child { border-bottom: none; }
-  .order-num {
-    font-family: 'Bebas Neue', sans-serif; font-size: 28px;
-    color: var(--accent); line-height: 1; min-width: 22px; text-align: center;
+
+  .list-row {
+    display: flex; align-items: baseline; gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+    animation: rowIn 0.3s ease forwards;
+    opacity: 0;
   }
-  .order-text { font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--text); line-height: 1.4; }
- 
-  /* Matching rows */
-  .match-row {
-    display: flex; align-items: baseline; gap: 10px;
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
+  .list-row:first-child { border-top: 1px solid var(--border); }
+
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
   }
-  .match-row:last-child { border-bottom: none; }
-  .match-term  { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; color: var(--accent); white-space: nowrap; min-width: 100px; flex-shrink: 0; }
-  .match-arrow { color: var(--text-dim); font-size: 13px; flex-shrink: 0; }
-  .match-def   { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); line-height: 1.45; }
- 
-  /* ── Question card ── */
-  .question-card {
-    width: 100%; max-width: 620px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px 20px;
-    display: flex; flex-direction: column; gap: 6px;
-    opacity: 0; transform: translateY(8px);
-    transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+
+  .list-key {
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(14px, 1.8vw, 20px);
+    color: var(--accent);
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 32px;
   }
-  .question-card.visible { opacity: 1; transform: translateY(0); }
-  .question-card-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
-  .question-text       { font-family: 'DM Sans', sans-serif; font-size: clamp(13px, 1.8vw, 18px); color: var(--text); line-height: 1.55; }
-  .question-text.empty { color: var(--text-dim); font-style: italic; font-size: 13px; }
+
+  .list-sep {
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(13px, 1.6vw, 18px);
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .list-val {
+    font-size: clamp(14px, 1.8vw, 20px);
+    color: var(--text);
+    line-height: 1.4;
+  }
 </style>
 </head>
 <body>
- 
-<div class="corner tl"></div>
-<div class="corner tr"></div>
-<div class="corner bl"></div>
-<div class="corner br"></div>
- 
+
 <!-- Connection status -->
 <div class="conn-widget">
   <div class="conn-row">
     <div class="conn-dot connecting" id="conn-dot"></div>
     <div class="conn-label"         id="conn-label">Connecting</div>
   </div>
-  <div id="last-updated" style="display:none; flex-direction:column; align-items:flex-end; gap:2px;">
-    <div class="lu-label">Last answer</div>
-    <div class="lu-time" id="lu-time">—</div>
-    <div class="lu-ago"  id="lu-ago">—</div>
-  </div>
+  <div class="lu-time" id="lu-time" style="display:none"></div>
+  <div class="lu-ago"  id="lu-ago"  style="display:none"></div>
 </div>
- 
-<!-- History -->
-<div class="history" id="history-panel" style="display:none">
-  <div class="history-label">Recent</div>
+
+<!-- Question -->
+<div class="question-section">
+  <div class="section-label">Question</div>
+  <div class="question-text waiting" id="question-text">Waiting for first question…</div>
 </div>
- 
-<!-- Main display -->
-<div class="display-area">
- 
-  <div class="type-badge" id="type-badge">Waiting</div>
- 
-  <!-- Ring mode: single_mc, multi_select -->
-  <div id="ring-mode">
-    <div class="answer-ring">
-      <svg class="ans-ring-svg" viewBox="0 0 200 200">
-        <circle class="ans-track"    cx="100" cy="100" r="90"/>
-        <circle class="ans-progress" id="ans-ring" cx="100" cy="100" r="90"/>
-      </svg>
-      <div class="flash-overlay"    id="flash-overlay"></div>
-      <div class="answer-number waiting" id="answer-display">--</div>
-    </div>
-  </div>
- 
-  <!-- List mode: ordering, matching -->
-  <div id="list-mode">
-    <div class="answer-list-card" id="answer-list-card"></div>
-  </div>
- 
-  <!-- Question card (always shown) -->
-  <div class="question-card" id="question-card">
-    <div class="question-card-label">Question</div>
-    <div class="question-text empty" id="question-text">Waiting for first question…</div>
-  </div>
- 
+
+<!-- Answer -->
+<div class="answer-section">
+  <div class="answer-type-label" id="answer-type-label">Answer</div>
+
+  <!-- Single MC / Multi-select: big letter(s) -->
+  <div class="big-answer" id="big-answer"></div>
+
+  <!-- Ordering / Matching: list -->
+  <div class="list-answer" id="list-answer"></div>
 </div>
- 
+
 <script>
   const FIREBASE_URL = 'https://test-uh-306c6-default-rtdb.firebaseio.com/quiz.json';
-  const CIRC_ANS     = 2 * Math.PI * 90;
- 
-  // ── Cached DOM refs ───────────────────────────────────────────────────────
+
   const elConnDot      = document.getElementById('conn-dot');
   const elConnLabel    = document.getElementById('conn-label');
-  const elLastUpdated  = document.getElementById('last-updated');
   const elLuTime       = document.getElementById('lu-time');
   const elLuAgo        = document.getElementById('lu-ago');
-  const elTypeBadge    = document.getElementById('type-badge');
-  const elRingMode     = document.getElementById('ring-mode');
-  const elListMode     = document.getElementById('list-mode');
-  const elListCard     = document.getElementById('answer-list-card');
-  const elAnsRing      = document.getElementById('ans-ring');
-  const elFlashOverlay = document.getElementById('flash-overlay');
-  const elAnswerDisplay = document.getElementById('answer-display');
-  const elQuestionCard = document.getElementById('question-card');
   const elQuestionText = document.getElementById('question-text');
-  const elHistoryPanel = document.getElementById('history-panel');
- 
-  // ── State ─────────────────────────────────────────────────────────────────
-  let lastTs     = null;
-  let lastUpdate = null;
-  let agoTimer   = null;
-  let history    = [];
-  let evtSource  = null;
- 
+  const elTypeLabel    = document.getElementById('answer-type-label');
+  const elBigAnswer    = document.getElementById('big-answer');
+  const elListAnswer   = document.getElementById('list-answer');
+
   const TYPE_LABELS = {
     single_mc:    'Multiple Choice',
     multi_select: 'Multi-Select',
     ordering:     'Ordering',
     matching:     'Matching'
   };
- 
+
+  let lastTs = null, lastUpdate = null, agoTimer = null, evtSource = null;
+
   // ── Firebase listener ─────────────────────────────────────────────────────
   function connect() {
     if (evtSource) evtSource.close();
     setConn('connecting', 'Connecting');
     evtSource = new EventSource(FIREBASE_URL);
- 
+
     evtSource.onopen = () => setConn('live', 'Live');
- 
+
     evtSource.addEventListener('put', e => {
       setConn('live', 'Live');
       try {
         const record = JSON.parse(e.data).data;
         if (!record || record.answer == null) return;
-        if (record.ts === lastTs) return; // deduplicate
- 
-        lastTs     = record.ts;
+        if (record.ts === lastTs) return;
+
+        lastTs = record.ts;
         lastUpdate = Date.now();
-        elLastUpdated.style.display = 'flex';
-        elLuTime.textContent = new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        elLuTime.style.display = 'block';
+        elLuAgo.style.display  = 'block';
+        elLuTime.textContent   = new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         updateAgo();
- 
+
         showAnswer(record.type || 'single_mc', record.display || '', record.question || '');
       } catch(err) { console.warn('Parse error:', err); }
     });
- 
+
     evtSource.onerror = () => {
       setConn('error', 'Reconnecting…');
       evtSource.close();
       setTimeout(connect, 5000);
     };
   }
- 
-  // ── Display switcher ──────────────────────────────────────────────────────
+
+  // ── Display ───────────────────────────────────────────────────────────────
   function showAnswer(type, display, questionText) {
-    // Type badge
-    elTypeBadge.textContent = TYPE_LABELS[type] || type;
-    elTypeBadge.classList.add('visible');
- 
-    if (type === 'single_mc' || type === 'multi_select') {
-      showRingAnswer(type, display);
-    } else {
-      showListAnswer(type, display);
-    }
- 
-    // Question card
+    // Question
     if (questionText && questionText.trim()) {
       elQuestionText.textContent = questionText.trim();
       elQuestionText.className   = 'question-text';
     } else {
       elQuestionText.textContent = 'Question text not available';
-      elQuestionText.className   = 'question-text empty';
+      elQuestionText.className   = 'question-text waiting';
     }
-    elQuestionCard.classList.remove('visible');
-    void elQuestionCard.offsetWidth;
-    elQuestionCard.classList.add('visible');
- 
-    // History (store first token of display as short label)
-    const shortLabel = display.split('\n')[0].replace(/^\d+\.\s*/, '').slice(0, 2) || display.slice(0, 2);
-    history.unshift(type === 'single_mc' || type === 'multi_select' ? display.replace(/ and /g, '·') : '✓');
-    if (history.length > 4) history.pop();
-    renderHistory();
-  }
- 
-  // ── Ring mode (single_mc, multi_select) ──────────────────────────────────
-  function showRingAnswer(type, display) {
-    elRingMode.style.display = 'flex';
-    elListMode.style.display = 'none';
- 
-    const el = elAnswerDisplay;
- 
-    // Flash
-    elFlashOverlay.className = 'flash-overlay go';
-    setTimeout(() => { elFlashOverlay.className = 'flash-overlay'; }, 600);
- 
-    el.textContent = display;
-    el.className   = 'answer-number' + (type === 'multi_select' ? ' multi' : '');
-    void el.offsetWidth;
-    el.classList.add('flash');
- 
-    // Ring fill
-    if (type === 'single_mc') {
-      // Fill by letter position: A=25%, B=50%, C=75%, D=100%, E=100%
-      const letterOrder = { A: 1, B: 2, C: 3, D: 4, E: 4 };
-      const letter = display.trim().toUpperCase();
-      const pos = letterOrder[letter] || 1;
-      elAnsRing.style.strokeDasharray = `${(pos / 4) * CIRC_ANS} ${CIRC_ANS}`;
+
+    // Type label
+    elTypeLabel.textContent = TYPE_LABELS[type] || type;
+    elTypeLabel.classList.add('visible');
+
+    if (type === 'single_mc' || type === 'multi_select') {
+      // Big answer
+      elListAnswer.style.display = 'none';
+      elBigAnswer.style.display  = 'block';
+      // Re-trigger animation
+      elBigAnswer.style.animation = 'none';
+      void elBigAnswer.offsetWidth;
+      elBigAnswer.style.animation = '';
+      elBigAnswer.textContent = display;
     } else {
-      // Multi-select: fill fully
-      elAnsRing.style.strokeDasharray = `${CIRC_ANS} ${CIRC_ANS}`;
+      // List answer
+      elBigAnswer.style.display  = 'none';
+      elListAnswer.style.display = 'flex';
+      elListAnswer.innerHTML = '';
+
+      const lines = display.split('\n').filter(l => l.trim());
+      lines.forEach((line, i) => {
+        const dashIdx = line.indexOf(' - ');
+        let key, val;
+        if (dashIdx !== -1) {
+          key = line.slice(0, dashIdx).trim();
+          val = line.slice(dashIdx + 3).trim();
+        } else {
+          key = line;
+          val = '';
+        }
+
+        const row = document.createElement('div');
+        row.className = 'list-row';
+        row.style.animationDelay = (i * 60) + 'ms';
+
+        const elKey = document.createElement('div');
+        elKey.className   = 'list-key';
+        elKey.textContent = key;
+
+        const elSep = document.createElement('div');
+        elSep.className   = 'list-sep';
+        elSep.textContent = '—';
+
+        const elVal = document.createElement('div');
+        elVal.className   = 'list-val';
+        elVal.textContent = val;
+
+        row.appendChild(elKey);
+        if (val) { row.appendChild(elSep); row.appendChild(elVal); }
+        elListAnswer.appendChild(row);
+      });
     }
   }
- 
-  // ── List mode (ordering, matching) ───────────────────────────────────────
-  function showListAnswer(type, display) {
-    elRingMode.style.display = 'none';
-    elListMode.style.display = 'flex';
- 
-    const lines = display.split('\n').filter(l => l.trim());
-    elListCard.innerHTML = '';
- 
-    if (type === 'ordering') {
-      lines.forEach(line => {
-        // Format: "1. Step text" or "1 Step text"
-        const match = line.match(/^(\d+)[\.\s]+(.+)$/);
-        const num  = match ? match[1] : '?';
-        const text = match ? match[2] : line;
-        const row  = document.createElement('div');
-        row.className = 'order-row';
-        row.innerHTML = `<div class="order-num">${num}</div><div class="order-text">${text}</div>`;
-        elListCard.appendChild(row);
-      });
-    } else if (type === 'matching') {
-      lines.forEach(line => {
-        // Format: "Term → Definition"
-        const parts = line.split('→');
-        const term  = parts[0]?.trim() || line;
-        const def   = parts[1]?.trim() || '';
-        const row   = document.createElement('div');
-        row.className = 'match-row';
-        row.innerHTML = `<div class="match-term">${term}</div><div class="match-arrow">→</div><div class="match-def">${def}</div>`;
-        elListCard.appendChild(row);
-      });
-    }
- 
-    // Re-trigger card animation
-    elListCard.style.animation = 'none';
-    void elListCard.offsetWidth;
-    elListCard.style.animation = '';
-  }
- 
-  // ── History ───────────────────────────────────────────────────────────────
-  function renderHistory() {
-    if (history.length < 2) { elHistoryPanel.style.display = 'none'; return; }
-    elHistoryPanel.style.display = 'flex';
-    elHistoryPanel.querySelectorAll('.history-item').forEach(i => i.remove());
-    history.slice(1).forEach(n => {
-      const d = document.createElement('div');
-      d.className = 'history-item'; d.textContent = n;
-      elHistoryPanel.appendChild(d);
-    });
-  }
- 
-  // ── "X ago" updater ───────────────────────────────────────────────────────
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   function startAgoUpdater() {
     clearInterval(agoTimer);
     agoTimer = setInterval(updateAgo, 1000);
   }
- 
+
   function updateAgo() {
     if (!lastUpdate) return;
     const secs = Math.round((Date.now() - lastUpdate) / 1000);
@@ -397,12 +307,12 @@
     else if (secs < 60)  elLuAgo.textContent = secs + 's ago';
     else                 elLuAgo.textContent = Math.floor(secs / 60) + 'm ' + (secs % 60) + 's ago';
   }
- 
+
   function setConn(state, label) {
     elConnDot.className    = 'conn-dot ' + state;
     elConnLabel.textContent = label;
   }
- 
+
   connect();
   startAgoUpdater();
 </script>
