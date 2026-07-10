@@ -449,9 +449,11 @@ Format by type:
 
 single_mc — answer: correct letter string e.g. "B"
   display: same letter e.g. "B"
+  NOTE: If choices have no letter labels, assign A, B, C, D, E top to bottom. Always return a letter, never the full answer text.
 
 multi_select — answer: array of correct letters e.g. ["B","D"]
   display: letters joined with " & " e.g. "B & D"
+  NOTE: If choices have no letter labels, assign A, B, C, D, E top to bottom. Always return letters only, never the full answer text.
 
 ordering — answer: array of {position, text} objects in correct order
   display: numbered lines joined with newline e.g. "1 - Gather information\n2 - Prepare financial statements\n3 - Analyze financial statements\n4 - Make decision\n5 - Implement decision"
